@@ -1,4 +1,5 @@
 import os
+import io
 import shutil
 from uuid import uuid4
 from fastapi import FastAPI, HTTPException, Request, UploadFile, File
@@ -8,6 +9,7 @@ from core import Session, User, Grape, Image
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
+from PIL import Image as PILImage
 
 
 app = FastAPI(title="Vineyard API")
@@ -27,6 +29,8 @@ templates = Jinja2Templates(directory="templates")
 class NewGrape(BaseModel):
     sort: str
 
+class Image_description(BaseModel):
+    text: str
 
 class UpdateGrape(BaseModel):
     location: Optional[str] = None
@@ -117,6 +121,32 @@ async def show_user_grape(request: Request, telegram_id: int, grape_id: int):
     )
 
 
+@app.get('/user/{telegram_id}/grape/{grape_id}/image/{image_id}')
+async def show_grape_image(request: Request, telegram_id: int, grape_id: int, image_id: int):
+    session = Session()
+
+    image = session.query(Image).filter_by(id=image_id).first()
+    if not image:
+        session.close()
+        raise HTTPException(status_code=404, detail='Image not found')
+    
+    context = {
+        'id': image.id,
+        'file_path': image.file_path,
+        'description': image.description,
+        'grape_id': image.grape_id,
+        'telegram_id': telegram_id
+    }
+
+    session.close()
+
+    return templates.TemplateResponse(
+        request=request,
+        name='image.html',
+        context=context
+    )
+
+
 #POST--------------------------------------------------------------------------------------------------------------------------------------------------------
 @app.post('/user/{telegram_id}/add_grape')
 async def add_grape(telegram_id: int, grape: NewGrape):
@@ -161,6 +191,23 @@ async def update_grape(telegram_id: int, grape_id: int, data: UpdateGrape):
     return {'status': 'success'}
 
 
+@app.post('/user/{telegram_id}/grape/{grape_id}/image/{image_id}/description')
+async def description(telegram_id: int, grape_id: int, image_id: int, data: Image_description):
+    session = Session()
+
+    image = session.query(Image).filter_by(id=image_id).first()
+    if not image:
+        session.close()
+        raise HTTPException(status_code=404, detail='Image not found')
+    
+    image.description = data.text
+
+    session.commit()
+    session.close()
+
+    return {'status': 'success'}
+
+
 @app.post('/user/{telegram_id}/grape/{grape_id}/upload_image')
 async def upload_image(telegram_id: int, grape_id: int, file: UploadFile = File(...)):
     session = Session()
@@ -172,13 +219,19 @@ async def upload_image(telegram_id: int, grape_id: int, file: UploadFile = File(
 
         os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-        file_extension = file.filename.split(".")[-1] if "." in file.filename else "jpg"
-        unique_filename = f"{uuid4()}.{file_extension}"
-        file_path = os.path.join(UPLOAD_DIR, unique_filename)
-
         contents = await file.read()
-        with open(file_path, "wb") as buffer:
-            buffer.write(contents)
+
+        img = PILImage.open(io.BytesIO(contents))
+
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+
+        img.thumbnail((1600, 1600))
+
+        unique_filename = f"{uuid4()}.jpg"
+        file_path = os.path.join(UPLOAD_DIR, unique_filename)
+        
+        img.save(file_path, "JPEG", quality=70, optimize=True)
 
         db_file_path = f"/static/uploads/{unique_filename}"
 
@@ -187,7 +240,7 @@ async def upload_image(telegram_id: int, grape_id: int, file: UploadFile = File(
 
         return {'status': 'success', 'file_path': db_file_path}
     except Exception as e:
-        print(f"[ERROR] Ошибка сохранения фотографии: {e}")
+        print(f"[ERROR] Ошибка сжатия и сохранения фотографии: {e}")
         raise HTTPException(status_code=500, detail=f"Ошибка сервера при сохранении файла: {str(e)}")
     finally:
         session.close()

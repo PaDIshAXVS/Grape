@@ -154,7 +154,8 @@
 
     <div class="gallery-container">
         {% for image in images %}
-        <div class="gallery-item">
+        <!-- Теперь клик по фотографии перенаправляет на страницу детального просмотра картинки -->
+        <div class="gallery-item" onclick="window.location.href='/user/{{ telegram_id }}/grape/{{ id }}/image/{{ image.id }}'">
             <img src="{{ image.file_path }}" alt="Фото винограда">
         </div>
         {% endfor %}
