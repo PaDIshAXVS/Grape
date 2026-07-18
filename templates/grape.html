@@ -129,16 +129,15 @@
 
         <div class="form-group">
             <label class="form-label">Дата посадки</label>
-            <input type="date" id="grapeDate" class="form-input">
+            <!-- Изменен тип инпута на month для выбора только месяца и года -->
+            <input type="month" id="grapeDate" class="form-input">
         </div>
 
-        <!-- Переименовали ярлык поля -->
         <div class="form-group">
             <label class="form-label">Описание сорта</label>
             <textarea id="grapeSortText" class="form-input" placeholder="Особенности сорта, вкусовые качества... ">{{ sort_text or '' }}</textarea>
         </div>
 
-        <!-- Добавили поле для ввода показателя Брикс -->
         <div class="form-group">
             <label class="form-label">Сахаристость (Брикс, %)</label>
             <input type="number" step="0.1" id="grapeBriks" class="form-input" value="{{ briks }}" placeholder="Например: 18.5">
@@ -154,7 +153,6 @@
 
     <div class="gallery-container">
         {% for image in images %}
-        <!-- Теперь клик по фотографии перенаправляет на страницу детального просмотра картинки -->
         <div class="gallery-item" onclick="window.location.href='/user/{{ telegram_id }}/grape/{{ id }}/image/{{ image.id }}'">
             <img src="{{ image.file_path }}" alt="Фото винограда">
         </div>
@@ -178,12 +176,13 @@
         const tg = window.Telegram.WebApp;
         tg.ready();
 
-        // Заполнение даты посадки
+        // Безопасное заполнение инпута выбора месяца (формат YYYY-MM)
         const rawDate = "{{ date }}"; 
         if (rawDate && rawDate !== "None") {
             const d = new Date(rawDate.replace(' ', 'T'));
             if (!isNaN(d)) {
-                const formatted = d.toISOString().split('T')[0];
+                // Извлекаем только год и месяц
+                const formatted = d.toISOString().split('T')[0].substring(0, 7);
                 document.getElementById('grapeDate').value = formatted;
             }
         }
@@ -210,7 +209,8 @@
             };
 
             if (dateVal) {
-                payload.date = new Date(dateVal).toISOString();
+                // Принудительно ставим 1-е число месяца для корректной записи в бэкенд
+                payload.date = new Date(dateVal + "-01").toISOString();
             }
 
             try {
