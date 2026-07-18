@@ -19,6 +19,8 @@ class User(Base):
     telegram_id = Column(BigInteger, unique=True)
 
     vineyard = relationship('Grape', back_populates='user', cascade='all, delete-orphan')
+    processing_log = relationship('Obrabotka', back_populates='user', cascade='all, delete-orphan')
+    podkormka_log = relationship('Podkormka', back_populates='user', cascade='all, delete-orphan')
 
 
     @classmethod
@@ -40,6 +42,28 @@ class User(Base):
 
     def remove_grape(self, session, grape):
         self.vineyard.remove(grape)
+
+        session.commit()
+
+
+    def add_process(self, session, process):
+        self.processing_log.append(process)
+
+        session.commit()
+
+    def remove_process(self, session, process):
+        self.processing_log.remove(process)
+
+        session.commit()
+
+
+    def add_korm(self, session, korm):
+        self.podkormka_log.append(korm)
+
+        session.commit()
+
+    def remove_korm(self, session, korm):
+        self.podkormka_log.remove(korm)
 
         session.commit()
 
@@ -88,6 +112,30 @@ class Image(Base):
     grape_id = Column(Integer, ForeignKey('grapes.id'))
     
     grape = relationship('Grape', back_populates='images')
+
+
+class Obrabotka(Base):
+    __tablename__ = 'obrabotka'
+
+    id = Column(Integer, index=True, autoincrement=True, primary_key=True)
+    description = Column(String, default=None)
+    date = Column(DateTime, default=datetime.now)
+
+    user_id = Column(Integer, ForeignKey('users.id'))
+
+    user = relationship('User', back_populates='processing_log')
+
+
+class Podkormka(Base):
+    __tablename__ = 'podkormka'
+
+    id = Column(Integer, index=True, autoincrement=True, primary_key=True)
+    description = Column(String, default=None)
+    date = Column(DateTime, default=datetime.now)
+
+    user_id = Column(Integer, ForeignKey('users.id'))
+
+    user = relationship('User', back_populates='podkormka_log')
 
 
 def setup():

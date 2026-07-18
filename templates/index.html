@@ -21,7 +21,7 @@
             background-color: var(--bg-color);
             color: var(--text-main);
             font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-            padding: 20px;
+            padding: 20px 20px 80px 20px; /* Отступ снизу под навигацию */
             user-select: none; 
             -webkit-user-select: none;
         }
@@ -58,7 +58,6 @@
 
         .grape-status { display: flex; gap: 10px; margin-top: 10px; font-size: 12px; z-index: 2; position: relative; }
         .status-badge { padding: 4px 8px; border-radius: 6px; background: rgba(255,255,255,0.04); font-weight: 500; }
-        .status-badge.processed { color: #a6e3a1; background: rgba(166, 227, 161, 0.1); }
 
         /* Векторный узор винограда на фоне карточки */
         .grape-pattern {
@@ -74,6 +73,19 @@
         .add-btn:active { transform: scale(0.95); }
 
         .empty-state { text-align: center; color: var(--text-muted); margin-top: 60px; font-size: 15px; line-height: 1.5; }
+
+        /* Фиксированная навигационная панель снизу */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; right: 0; height: 65px;
+            background: #111218; border-top: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex; justify-content: space-around; align-items: center; z-index: 1000;
+        }
+        .nav-item {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: var(--text-muted); text-decoration: none; font-size: 11px; gap: 4px; flex: 1; height: 100%;
+        }
+        .nav-item.active { color: var(--accent-color); font-weight: bold; }
+        .nav-item svg { width: 22px; height: 22px; }
 
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
@@ -91,7 +103,6 @@
         <div class="grape-card" data-delay="{{ loop.index0 * 0.1 }}" data-date="{{ grape.date }}"
             onclick="window.location.href='/user/{{ telegram_id }}/grape/{{ grape.id }}'">
             
-            <!-- Фоновый узор винограда -->
             <svg class="grape-pattern" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 2C11.5 3.5 10 4 9 4.5C9.5 5 11 5 11.5 6C12 5 13.5 5 14 4.5C13 4 11.5 3.5 12 2Z" />
                 <circle cx="12" cy="8" r="2.2"/>
@@ -117,7 +128,7 @@
             <div class="grape-status">
                 <span class="status-badge age-text">Возраст: ...</span>
                 {% if grape.briks > 0 %}
-                <span class="status-badge">Брикс: {{ grape.briks }}%</span>
+                <span class="status-badge" style="color: var(--accent-color);">Брикс: {{ grape.briks }}%</span>
                 {% endif %}
                 {% if grape.total > 0 %}
                 <span class="status-badge">Урожай: {{ grape.total }} кг</span>
@@ -136,6 +147,28 @@
         <button class="add-btn" onclick="createNewGrape()">+</button>
     </div>
 
+    <!-- Нижняя навигационная панель -->
+    <div class="bottom-nav">
+        <a href="/user/{{ telegram_id }}" class="nav-item active">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+            </svg>
+            Виноградник
+        </a>
+        <a href="/user/{{ telegram_id }}/process" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            Обработки
+        </a>
+        <a href="/user/{{ telegram_id }}/podkormka" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+            Подкормки
+        </a>
+    </div>
+
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
@@ -148,18 +181,15 @@
             if (delay) card.style.animationDelay = delay + 's';
         });
 
-        // Функция точного подсчета количества прожитых зим (декабрей)
         function getWintersSurvived(plantDateStr) {
             if (!plantDateStr || plantDateStr === "None") return 0;
-            
             const start = new Date(plantDateStr.replace(' ', 'T'));
             const end = new Date();
             if (isNaN(start)) return 0;
             
             let winters = 0;
-            // Календарная зима считается пройденной, если мы пересекли 1 декабря
             for (let year = start.getFullYear(); year <= end.getFullYear(); year++) {
-                const dec1 = new Date(year, 11, 1); // 11 — это декабрь (в JS отсчет с 0)
+                const dec1 = new Date(year, 11, 1);
                 if (dec1 > start && dec1 < end) {
                     winters++;
                 }
@@ -167,33 +197,15 @@
             return winters;
         }
 
-        // Новая система рангов с повышенной яркостью свечения и фонов
         function getRarityByWinters(winters) {
-            if (winters === 0) {
-                return { name: 'Черенок', color: '#00f0ff', shadow: '0 0 10px rgba(0, 240, 255, 0.3)', bg: 'rgba(0, 240, 255, 0.03)' };
-            }
-            if (winters === 1) {
-                return { name: 'Перволеток', color: '#00ff66', shadow: '0 0 10px rgba(0, 255, 102, 0.3)', bg: 'rgba(0, 255, 102, 0.03)' };
-            }
-            if (winters === 2) {
-                return { name: 'Двухлетка', color: '#3b82f6', shadow: '0 0 10px rgba(59, 130, 246, 0.3)', bg: 'rgba(59, 130, 246, 0.03)' };
-            }
-            if (winters === 3) {
-                return { name: 'Трехлетка', color: '#a855f7', shadow: '0 0 12px rgba(168, 85, 247, 0.35)', bg: 'rgba(168, 85, 247, 0.03)' };
-            }
-            if (winters === 4) {
-                return { name: 'Взрослый', color: '#ec4899', shadow: '0 0 12px rgba(236, 72, 153, 0.35)', bg: 'rgba(236, 72, 153, 0.03)' };
-            }
-            // Вековой (легендарный) ранг
-            return { 
-                name: 'Вековой', 
-                color: 'linear-gradient(90deg, #f59e0b, #ef4444)', 
-                shadow: '0 0 16px rgba(245, 158, 11, 0.55)', 
-                bg: 'rgba(245, 158, 11, 0.04)' 
-            };
+            if (winters === 0) return { name: 'Черенок', color: '#00f0ff', shadow: 'none', bg: 'rgba(0, 240, 255, 0.02)' };
+            if (winters === 1) return { name: 'Перволеток', color: '#00ff66', shadow: '0 0 6px rgba(0,255,102,0.3)', bg: 'rgba(0, 255, 102, 0.02)' };
+            if (winters === 2) return { name: 'Двухлетка', color: '#3b82f6', shadow: '0 0 6px rgba(59,130,246,0.3)', bg: 'rgba(59, 130, 246, 0.02)' };
+            if (winters === 3) return { name: 'Трехлетка', color: '#a855f7', shadow: '0 0 8px rgba(168,85,247,0.4)', bg: 'rgba(168, 85, 247, 0.02)' };
+            if (winters === 4) return { name: 'Взрослый', color: '#ec4899', shadow: '0 0 8px rgba(236,72,153,0.4)', bg: 'rgba(236, 72, 153, 0.02)' };
+            return { name: 'Вековой', color: 'linear-gradient(90deg, #f59e0b, #ef4444)', shadow: '0 0 16px rgba(245,158,11,0.55)', bg: 'rgba(245, 158, 11, 0.04)' };
         }
 
-        // Вычисляем возраст и разукрашиваем карточки (с улучшенными яркими рамками)
         document.querySelectorAll('.grape-card').forEach(card => {
             const rawDate = card.getAttribute('data-date');
             if (!rawDate) return;
@@ -224,7 +236,7 @@
 
             badge.innerText = styles.name;
             card.style.background = styles.bg;
-            card.style.boxShadow = styles.shadow; // Применяем яркий цветной неон ко всем карточкам
+            card.style.boxShadow = styles.shadow;
 
             if (styles.color.includes('gradient')) {
                 badge.style.background = styles.color;
@@ -233,16 +245,15 @@
                 badge.style.backgroundSize = '200% 200%';
                 badge.style.animation = 'gradientShift 3s ease infinite';
                 pattern.style.color = '#f59e0b';
-                pattern.style.opacity = '0.24'; // В два раза ярче узор для легендарного куста
-                card.style.border = '2.5px solid rgba(245, 158, 11, 0.55)'; // Яркая золотая рамка
+                pattern.style.opacity = '0.24';
+                card.style.border = '2.5px solid rgba(245,158,11,0.55)';
             } else {
                 badge.style.color = styles.color;
                 pattern.style.color = styles.color;
-                pattern.style.opacity = '0.20'; // В 2.5 раза ярче узор для обычных кустов
-                card.style.border = `2px solid ${styles.color}77`; // Граница стала шире (2px) и ярче (прозрачность снижена с 22 до 77)
+                pattern.style.opacity = '0.20';
+                card.style.border = `2px solid ${styles.color}77`;
             }
         });
-        
 
         async function createNewGrape() {
             const input = document.getElementById('newGrapeSort');
@@ -261,9 +272,7 @@
                 } else {
                     alert("Ошибка при сохранении");
                 }
-            } catch (e) {
-                console.error(e);
-            }
+            } catch (e) { console.error(e); }
         }
     </script>
 </body>

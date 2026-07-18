@@ -5,7 +5,7 @@ from uuid import uuid4
 from fastapi import FastAPI, HTTPException, Request, UploadFile, File
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from core import Session, User, Grape, Image
+from core import Session, User, Grape, Image, Podkormka, Obrabotka
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
@@ -31,6 +31,10 @@ class NewGrape(BaseModel):
 
 class Image_description(BaseModel):
     text: str
+
+class Log(BaseModel):
+    date: datetime
+    description: str
 
 class UpdateGrape(BaseModel):
     location: Optional[str] = None
@@ -79,6 +83,66 @@ async def show_user_vineyard(request: Request, telegram_id: int):
             'telegram_id': telegram_id,
             'grapes_count': len(grapes_data),
             'vineyard': grapes_data
+        }
+    )
+
+
+@app.get('/user/{telegram_id}/process')
+async def show_user_process_log(request: Request, telegram_id: int):
+    session = Session()
+
+    user = session.query(User).filter_by(telegram_id=telegram_id).first()
+    if not user:
+        session.close()
+        raise HTTPException(status_code=404, detail='Пользователь не найден')
+    
+    process_log = []
+    for process in user.processing_log:
+        process_log.append({
+            'id': process.id,
+            'date': process.date,
+            'description': process.description
+        })
+    
+    session.close()
+
+    return templates.TemplateResponse(
+        request=request,
+        name='obrabotka.html',
+        context={
+            'telegram_id': telegram_id,
+            'processes_count': len(process_log),
+            'processing_log': process_log
+        }
+    )
+
+
+@app.get('/user/{telegram_id}/podkormka')
+async def show_user_korm_log(request: Request, telegram_id: int):
+    session = Session()
+
+    user = session.query(User).filter_by(telegram_id=telegram_id).first()
+    if not user:
+        session.close()
+        raise HTTPException(status_code=404, detail='Пользователь не найден')
+    
+    podkormka_log = []
+    for korm in user.podkormka_log:
+        podkormka_log.append({
+            'id': korm.id,
+            'date': korm.date,
+            'description': korm.description
+        })
+    
+    session.close()
+
+    return templates.TemplateResponse(
+        request=request,
+        name='podkormka.html',
+        context={
+            'telegram_id': telegram_id,
+            'processes_count': len(podkormka_log),
+            'podkormka_log': podkormka_log 
         }
     )
 
@@ -159,6 +223,40 @@ async def add_grape(telegram_id: int, grape: NewGrape):
     
     db_grape = Grape(sort=grape.sort)
     user.add_grape(session, db_grape)
+
+    session.close()
+
+    return {'status': 'success'}
+
+
+@app.post('/user/{telegram_id}/process/add_process')
+async def add_process(telegram_id: int, process: Log):
+    session = Session()
+
+    user = session.query(User).filter_by(telegram_id=telegram_id).first()
+    if not user:
+        session.close()
+        raise HTTPException(status_code=404, detail='User not found')
+    
+    new_process = Obrabotka(date=process.date, description=process.description)
+    user.add_process(session, new_process)
+
+    session.close()
+
+    return {'status': 'success'}
+
+
+@app.post('/user/{telegram_id}/podkormka/add_korm')
+async def add_korm(telegram_id: int, korm: Log):
+    session = Session()
+
+    user = session.query(User).filter_by(telegram_id=telegram_id).first()
+    if not user:
+        session.close()
+        raise HTTPException(status_code=404, detail='User not found')
+    
+    podkormka = Podkormka(date=korm.date, description=korm.description)
+    user.add_korm(session, podkormka)
 
     session.close()
 
@@ -280,3 +378,37 @@ async def delete_grape(telegram_id: int, grape_id: int):
         raise HTTPException(status_code=500, detail="Ошибка на сервере при удалении куста")
     finally:
         session.close()
+
+
+@app.delete('/user/{telegram_id}/process/{process_id}')
+async def delete_process(telegram_id: int, process_id: int):
+    session = Session()
+
+    user = session.query(User).filter_by(telegram_id=telegram_id).first()
+    process = session.query(Obrabotka).filter_by(id=process_id).first()
+
+    if not user or not process:
+        session.close()
+        raise HTTPException(status_code=404, detail='Not found')
+    
+    user.remove_process(session, process)
+    session.close()
+
+    return {'status': 'success'}
+
+
+@app.delete('/user/{telegram_id}/podkormka/{korm_id}')
+async def delete_korm(telegram_id: int, korm_id: int):
+    session = Session()
+
+    user = session.query(User).filter_by(telegram_id=telegram_id).first()
+    podkormka = session.query(Podkormka).filter_by(id=korm_id).first()
+
+    if not user or not podkormka:
+        session.close()
+        raise HTTPException(status_code=404, detail='Not found')
+    
+    user.remove_korm(session, podkormka)
+    session.close()
+
+    return {'status': 'success'}
