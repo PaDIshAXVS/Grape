@@ -32,7 +32,7 @@ class UpdateGrape(BaseModel):
     location: Optional[str] = None
     sort_text: Optional[str] = None
     date: Optional[datetime] = None
-    processed: Optional[bool] = None
+    briks: Optional[float] = None
     total: Optional[float] = None
 
 
@@ -61,7 +61,7 @@ async def show_user_vineyard(request: Request, telegram_id: int):
             'location': grape.location,
             'sort_text': grape.sort_text,
             'date': grape.date,
-            'processed': grape.processed,
+            'briks': grape.briks,
             'total': grape.total,
             'images': images_list
         })
@@ -102,7 +102,7 @@ async def show_user_grape(request: Request, telegram_id: int, grape_id: int):
         'location': grape.location,
         'sort_text': grape.sort_text,
         'date': grape.date,
-        'processed': grape.processed,
+        'briks': grape.briks,
         'total': grape.total,
         'images': images_data,
         'telegram_id': telegram_id
@@ -150,8 +150,8 @@ async def update_grape(telegram_id: int, grape_id: int, data: UpdateGrape):
         grape.sort_text = data.sort_text
     if data.date is not None:
         grape.date = data.date
-    if data.processed is not None:
-        grape.processed = data.processed
+    if data.briks is not None:
+        grape.briks = data.briks
     if data.total is not None:
         grape.total = data.total
 

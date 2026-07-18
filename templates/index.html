@@ -116,8 +116,8 @@
             
             <div class="grape-status">
                 <span class="status-badge age-text">Возраст: ...</span>
-                {% if grape.processed %}
-                <span class="status-badge processed">✓ Обработан</span>
+                {% if grape.briks > 0 %}
+                <span class="status-badge">Брикс: {{ grape.briks }}%</span>
                 {% endif %}
                 {% if grape.total > 0 %}
                 <span class="status-badge">Урожай: {{ grape.total }} кг</span>

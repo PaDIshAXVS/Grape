@@ -52,7 +52,7 @@ class Grape(Base):
     location = Column(String, default=None)    
     sort_text = Column(String, default=None)   
     date = Column(DateTime, default=datetime.now)
-    processed = Column(Boolean, default=False)
+    briks = Column(Float, default=0.0)
     total = Column(Float, default=0.0)
 
     user_id = Column(Integer, ForeignKey('users.id'))
@@ -64,12 +64,6 @@ class Grape(Base):
     @classmethod
     def get_by_user(cls, session, user_id):
         return session.query(cls).filter_by(user_id=user_id).all()
-    
-
-    def complete(self, session):
-        self.processed = True
-
-        session.commit()
 
 
     def add_image(self, session, image):
